@@ -8,112 +8,165 @@ if (!isAdmin()) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $user_id = $_POST['user_id'] ?? 0;
-    $action = $_POST['action'] ?? '';
-    
-    
+    $user_id = (int)($_POST['user_id'] ?? 0);
+    $action  = $_POST['action'] ?? '';
+
+    /* ========= UPDATE USER ========= */
     if ($action === 'update') {
-        $name = trim($_POST['name']);
+        $name  = trim($_POST['name']);
         $email = trim($_POST['email']);
-        $role = $_POST['role'];
-        
-        $stmt = $conn->prepare("UPDATE users SET name = ?, email = ?, role = ? WHERE id = ?");
+        $role  = $_POST['role'];
+
+        $stmt = $conn->prepare(
+            "UPDATE users SET name = ?, email = ?, role = ? WHERE id = ?"
+        );
         $stmt->bind_param("sssi", $name, $email, $role, $user_id);
         $stmt->execute();
         $stmt->close();
-        
-        $_SESSION['message'] = "✓ User updated";
-        header('Location: admin_users.php');
+
+        $_SESSION['message'] = "✓ User updated successfully";
+        header("Location: admin_users.php");
         exit();
     }
+
+    /* ========= DELETE USER (FK SAFE) ========= */
+    if ($action === 'delete' && $user_id != $_SESSION['user_id']) {
+
+    // DELETE USER BOOKINGS FIRST
+    $stmt = $conn->prepare("DELETE FROM bookings WHERE user_id = ?");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $stmt->close();
+
+    // DELETE USER
+    $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $stmt->close();
+
+    $_SESSION['message'] = "✓ User and bookings deleted";
+    header("Location: admin_users.php");
+    exit();
 }
 
+}
+
+
 $users = $conn->query("SELECT * FROM users ORDER BY created_at DESC");
+$pending_count = $conn->query("SELECT COUNT(*) AS c FROM bookings WHERE status='pending'")
+                      ->fetch_assoc()['c'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Users - Admin</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<title>Manage Users</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <header class="header">
-        <div class="container">
-            <div class="header-content">
-                <div class="logo-section">
-                    <span class="logo">🏊‍♂</span>
-                    <h1>Shabda ko Pool</h1>
-                </div>
-                <div class="user-section">
-                    <span><?php echo htmlspecialchars($_SESSION['user_name']); ?></span>
-                    <a href="admin.php" class="btn btn-primary">← Back</a>
-                    <a href="logout.php" class="btn btn-logout">Logout</a>
-                </div>
-            </div>
+
+<header class="header">
+    <div class="container header-content">
+        <div class="logo-section">
+            <span class="logo">🏊‍♂️</span>
+            <h1>Shabda's Pool</h1>
         </div>
-    </header>
-    
-    <main class="container">
-        <h2>👥 Users</h2>
-        
-        <?php if (isset($_SESSION['message'])): ?>
-            <div class="alert"><?php echo $_SESSION['message']; unset($_SESSION['message']); ?></div>
-        <?php endif; ?>
-        
-        <?php if ($users->num_rows === 0): ?>
-            <div class="empty">No users found</div>
-        <?php else: ?>
-            <div class="grid">
-                <?php while ($user = $users->fetch_assoc()): ?>
-                    <div class="card">
-                        <form method="POST" class="edit-form">
-                            <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
-                            
-                            <div class="form-group">
-                                <label>Name</label>
-                                <input type="text" name="name" value="<?php echo htmlspecialchars($user['name']); ?>" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>Email</label>
-                                <input type="email" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>Role</label>
-                                <select name="role">
-                                    <option value="user" <?php echo $user['role'] === 'user' ? 'selected' : ''; ?>>User</option>
-                                    <option value="admin" <?php echo $user['role'] === 'admin' ? 'selected' : ''; ?>>Admin</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <small>Joined: <?php echo date('M j, Y', strtotime($user['created_at'])); ?></small>
-                            </div>
-                            
-                            <div class="actions">
-                                <button type="submit" name="action" value="update" class="btn btn-primary">Update</button>
-                                <?php if ($user['id'] != $_SESSION['user_id']): ?>
-                                <?php endif; ?>
-                            </div>
-                        </form>
-                    </div>
-                <?php endwhile; ?>
+        <div class="user-section">
+            <div class="user-info">
+                <p>Welcome back,</p>
+                <strong><?php echo htmlspecialchars($_SESSION['user_name']); ?></strong>
+                <span class="badge">Admin</span>
             </div>
+            <a href="logout.php" class="btn btn-danger btn-sm">Logout</a>
+        </div>
+    </div>
+</header>
+
+<nav class="nav">
+<div class="container">
+    <a href="admin.php" class="nav-link">
+        Admin Panel
+        <?php if ($pending_count > 0): ?>
+            <span class="notification-badge"><?php echo $pending_count; ?></span>
         <?php endif; ?>
-    </main>
-    
-    <style>
-        .grid { display: grid; gap: 1rem; }
-        .card { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .form-group { margin-bottom: 1rem; }
-        .form-group label { display: block; margin-bottom: 0.25rem; color: #555; }
-        .form-group input, .form-group select { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 5px; }
-        .actions { display: flex; gap: 0.5rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee; }
-        .alert { background: #d4edda; color: #155724; padding: 1rem; border-radius: 5px; margin-bottom: 1rem; }
-        .empty { text-align: center; padding: 3rem; color: #666; }
-    </style>
+    </a>
+    <a href="admin_users.php" class="nav-link active">Manage Users</a>
+</div>
+</nav>
+
+<main class="container">
+<h2 style="margin-top:20px; margin-bottom:20px;">👥 Manage Users</h2>
+
+<?php if (isset($_SESSION['message'])): ?>
+<div class="alert">
+    <?php echo $_SESSION['message']; unset($_SESSION['message']); ?>
+</div>
+<?php endif; ?>
+
+<table class="users-table" style="border-collapse:collapse; height:70%;">
+<thead style="height:60px;">
+<tr>
+    <th>Name</th>
+    <th>Email</th>
+    <th>Role</th>
+    <th>Joined</th>
+    <th>Actions</th>
+</tr>
+</thead>
+<tbody>
+
+<?php while ($user = $users->fetch_assoc()): ?>
+<tr style="text-align:left;">
+    <!-- ✅ FORM IS INSIDE TD (VALID HTML) -->
+    <td>
+        <form method="POST">
+        <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
+        <input type="text" name="name" value="<?php echo htmlspecialchars($user['name']); ?>" required>
+    </td>
+
+    <td>
+        <input type="email" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" required>
+    </td>
+
+    <td>
+        <select name="role" required>
+            <option value="user" <?php if ($user['role']=='user') echo 'selected'; ?>>User</option>
+            <option value="admin" <?php if ($user['role']=='admin') echo 'selected'; ?>>Admin</option>
+        </select>
+    </td>
+
+    <td>
+        <?php echo date('M j, Y', strtotime($user['created_at'])); ?>
+    </td>
+
+    <td class="actions">
+        <button type="submit" name="action" value="update">
+            Update
+        </button>
+
+        <?php if ($user['id'] != $_SESSION['user_id']): ?>
+            <button type="submit" name="action" value="delete" style="background-color:red;"
+                onclick="return confirm('Are you sure you want to delete this user?');">
+                Delete
+            </button>
+        <?php endif; ?>
+        </form>
+    </td>
+</tr>
+<?php endwhile; ?>
+
+</tbody>
+</table>
+</main>
+
+<style>
+.users-table{width:100%;border-collapse:collapse;margin-top:20px;background:#fff}
+.users-table th,.users-table td{padding:10px;border-bottom:1px solid #eee}
+.users-table th{background:#f5f5f5}
+.users-table input,.users-table select{width:100%;padding:6px}
+.actions{display:flex;gap:6px}
+.alert{background:#d4edda;padding:10px;margin-bottom:10px}
+</style>
+
 </body>
 </html>

@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['book_session'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Booking Session - Shabda ko pool</title>
+    <title>Booking Session - Shabda's pool</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['book_session'])) {
             <div class="header-content">
                 <div class="logo-section">
                     <span class="logo">🏊‍♂️</span>
-                    <h1>Shabda ko pool</h1>
+                    <h1>Shabda's pool</h1>
                 </div>
                 <div class="user-section">
                     <div class="user-info">

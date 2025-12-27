@@ -18,7 +18,7 @@ $stmt->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Bookings - habda ko pool</title>
+    <title>My Bookings - shabda's pool</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 </head>
@@ -28,7 +28,7 @@ $stmt->close();
             <div class="header-content">
                 <div class="logo-section">
                     <span class="logo">🏊‍♂</span>
-                    <h1>Shabda ko pool</h1>
+                    <h1>Shabda's pool</h1>
                 </div>
                 <div class="user-section">
                     <div class="user-info">
